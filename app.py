@@ -130,7 +130,6 @@ elif input_method == 'Enter a YouTube URL':
                 'format': 'bestaudio/best',
                 'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),
                 'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '192'}],
-                # Add a User-Agent header to mimic a browser request
                 'http_headers': {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'}
             }
             try:
@@ -149,4 +148,41 @@ if 'transcription_result' in st.session_state and st.session_state['transcriptio
     st.divider()
     st.subheader("📄 Transcription Result")
     
-    transcript_text = st.session_state['
+    # *** BU SATIR DÜZELTİLDİ ***
+    transcript_text = st.session_state['transcription_result']
+    
+    st.text_area(
+        "Result", 
+        transcript_text,
+        height=300
+    )
+    
+    if st.session_state.get('file_ready_for_download', False):
+        st.download_button(
+            label="📝 Download Transcript as .txt",
+            data=transcript_text.encode('utf-8'),
+            file_name="transcript.txt",
+            mime="text/plain"
+        )
+
+    st.divider()
+    
+    # --- SUMMARIZATION SECTION ---
+    st.subheader("📖 Generate a Summary")
+    if st.button("Generate Summary ✨", type="secondary"):
+        with st.spinner("Generating summary... Please wait."):
+            try:
+                summarizer = load_summarizer()
+                
+                # To avoid errors with summarizer token limits and to clean timestamps
+                text_to_summarize = '\n'.join([line.split(']', 1)[-1].strip() for line in transcript_text.split('\n') if ']' in line])
+                if not text_to_summarize: # If no timestamps were found, use the original text
+                    text_to_summarize = transcript_text
+
+                # Perform summarization
+                summary = summarizer(text_to_summarize, max_length=150, min_length=50, do_sample=False)
+                
+                st.subheader("🖋️ Summary")
+                st.write(summary[0]['summary_text'])
+            except Exception as e:
+                st.error(f"An error occurred during summarization: {e}")
